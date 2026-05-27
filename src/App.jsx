@@ -1,31 +1,18 @@
-import logo from "./logo.svg";
-import "./App.css";
-import Home from "./pages/home/Home";
-import { Route, Routes } from "react-router-dom";
-import AboutUs from "./../src/pages/aboutUs/AboutUs";
-import Calendar from "./pages/TrainingCalendar/Calendar";
-import { createContext, useContext, useState } from "react";
-import AdminPanel from "./pages/adminPanel/AdminPanel";
-import BookInfo from "./pages/bookInfo/BookInfo";
-
-export const AppContext = createContext(null);
+import { Routes, Route } from 'react-router-dom';
+import Layout from './components/layout/Layout';
+import HomePage from './pages/HomePage';
+import ArchivePage from './pages/ArchivePage';
 
 function App() {
-  const [auth, setAuth] = useState({
-    role: "user",
-    isLoginIn: false,
-    userInfo: null,
-  });
   return (
-    <AppContext.Provider value={{ auth  , setAuth}}>
+    <Layout>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/aboutUs" element={<AboutUs />} />
-        <Route path="/trainingCalendar" element={<Calendar />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/bookInfo/:id" element={<BookInfo />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/archive" element={<ArchivePage />} />
+        <Route path="/profile" element={<HomePage />} />
+        <Route path="/links" element={<HomePage />} />
       </Routes>
-    </AppContext.Provider>
+    </Layout>
   );
 }
 
