@@ -1,39 +1,46 @@
-import { FaPlay } from 'react-icons/fa';
+import React from "react";
 
-const TimestampList = ({ timestamps }) => {
-  const handlePlaySegment = (startTime) => {
-    console.log('Play from:', startTime);
-  };
+const parseTimeToSeconds = (timeStr) => {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(":").map(parseFloat);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parseFloat(timeStr) || 0;
+};
 
-  if (!timestamps || timestamps.length === 0) {
-    return null;
-  }
-
+const TimestampList = ({ segments, currentTime }) => {
   return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-      <div className="space-y-3">
-        {timestamps.map((segment, index) => (
+    <div className="flex flex-col gap-2">
+      {segments.map((item, index) => {
+        const startSec = parseTimeToSeconds(item.start);
+        const endSec = parseTimeToSeconds(item.end);
+        const isActiveSegment = currentTime >= startSec && currentTime <= endSec;
+
+        return (
           <div
             key={index}
-            className="flex items-center gap-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`flex flex-row items-center justify-between p-3 rounded-xl border transition-all ${
+              isActiveSegment
+                ? "bg-blue-50/80 border-blue-100 text-blue-600 shadow-sm"
+                : "bg-gray-50/60 border-transparent text-gray-700 hover:bg-gray-50"
+            }`}
           >
-            <button
-              onClick={() => handlePlaySegment(segment.start)}
-              className="text-blue-600 hover:text-blue-800"
+            <div className="text-right text-sm font-medium flex-1 pl-4">
+              {item.text || "[---]"}
+            </div>
+            <div
+              className={`font-mono text-sm font-semibold tracking-wide flex gap-2 pr-2 ${
+                isActiveSegment ? "text-blue-500" : "text-blue-400/80"
+              }`}
+              dir="ltr"
             >
-              <FaPlay />
-            </button>
-            
-            <span className="text-sm text-gray-500 font-mono min-w-[80px]">
-              {segment.start} - {segment.end}
-            </span>
-            
-            <span className="text-gray-700 flex-1">
-              {segment.text}
-            </span>
+              <span>{item.start ? item.start.split(".")[0] : "00:00"}</span>
+              <span className="text-gray-300">-</span>
+              <span>{item.end ? item.end.split(".")[0] : "00:00"}</span>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };
