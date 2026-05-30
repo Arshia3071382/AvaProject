@@ -21,7 +21,11 @@ const ActionButtons = ({
 
   const handleUploadClick = () => {
     if (onButtonChange) onButtonChange('upload');
-    document.getElementById('fileInput').click();
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+      fileInput.value = '';
+      fileInput.click();
+    }
   };
 
   const handleLinkClick = () => {
@@ -29,7 +33,7 @@ const ActionButtons = ({
   };
 
   const handleFileChange = (event) => {
-    if (onFileUpload) {
+    if (onFileUpload && event.target.files.length > 0) {
       onFileUpload(event);
     }
   };
@@ -40,9 +44,9 @@ const ActionButtons = ({
   const isNoButtonActive = !activeButton;
 
   return (
-    <div className="flex flex-row-reverse justify-start my-8 mb-0 border-none gap-2">
+    <div className="flex flex-row justify-start my-8 mb-0 border-none gap-2">
       
-      {/* دکمه ضبط صدا */}
+      {/* دکمه ضبط صدا - اول از راست */}
       <button
         onClick={handleRecordClick}
         className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-bold transition-all ${
@@ -55,7 +59,7 @@ const ActionButtons = ({
             : 'bg-white text-gray-500 border border-gray-200'
         }`}
       >
-        <div className="flex items-center flex-row-reverse gap-2">
+        <div className="flex items-center gap-2">
           {isRecording ? (
             <div className="w-3 h-3 bg-white rounded-full animate-ping"></div>
           ) : (
@@ -63,19 +67,19 @@ const ActionButtons = ({
               src={isRecordActive ? '/images/mic Icon.png' : '/images/mic Icon(1).png'} 
               alt="mic" 
               className="w-5 h-5"
-              onError={(e) => { e.target.style.display = 'none'; }} // در صورت عدم وجود تصویر مخفی شود
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
           )}
           <span>{isRecording ? 'توقف ضبط' : 'ضبط صدا'}</span>
         </div>
       </button>
 
-      {/* دکمه بارگذاری فایل */}
+      {/* دکمه بارگذاری فایل - دوم از راست */}
       <button
         onClick={handleUploadClick}
-        className={`flex flex-row-reverse items-center gap-2 px-6 py-3 rounded-t-xl font-bold transition-all ${
+        className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-bold transition-all ${
           isUploadActive
-            ? 'bg-blue-600 text-white'
+            ? 'bg-[#00BA9F] text-white'
             : isNoButtonActive
             ? 'bg-gray-100 text-gray-500 border border-gray-200'
             : 'bg-white text-gray-500 border border-gray-200'
@@ -90,12 +94,12 @@ const ActionButtons = ({
         <span>بارگذاری فایل</span>
       </button>
 
-      {/* دکمه لینک */}
+      {/* دکمه لینک - سوم از راست */}
       <button
         onClick={handleLinkClick}
-        className={`flex flex-row-reverse items-center gap-2 px-6 py-3 rounded-t-xl font-bold transition-all ${
+        className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-bold transition-all ${
           isLinkActive
-            ? 'bg-purple-600 text-white'
+            ? 'bg-[#00BA9F] text-white'
             : isNoButtonActive
             ? 'bg-gray-100 text-gray-500 border border-gray-200'
             : 'bg-white text-gray-500 border border-gray-200'

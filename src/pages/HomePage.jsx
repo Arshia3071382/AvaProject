@@ -1,137 +1,135 @@
+// src/pages/HomePage.jsx
 import { useState, useRef } from "react";
 import LanguageSelector from "../components/ui/LanguageSelector";
 import TranscriptDisplay from "../components/transcript/TranscriptDisplay";
 import ActionButtons from "../components/ui/ActionButtons";
-import TimestampList from "../components/transcript/TimestampList";
 import { transcribeFromUrl, transcribeFromFile } from "../services/api";
 
 const HomePage = () => {
   const [transcript, setTranscript] = useState("");
-  const [timestamps, setTimestamps] = useState([]);
+  const [segments, setSegments] = useState([]); // اضافه شدن آرایه سگمنت‌های دریافتی واقعی سرور
+  const [audioUrl, setAudioUrl] = useState(""); // ذخیره سازی لوکال لینک مدیا برای استفاده در پلیر صوتی
   const [isRecording, setIsRecording] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("fa");
-  const [activeButton, setActiveButton] = useState(null); // 
+  const [activeButton, setActiveButton] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  
 
-  // Recording References
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Format time (seconds to mm:ss)
-  const formatTime = (seconds) => {
-    if (!seconds && seconds !== 0) return '00:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const handleReset = () => {
+    setTranscript("");
+    setSegments([]);
+    setAudioUrl("");
+    setIsRecording(false);
+    setActiveButton(null);
+    setIsLoading(false);
+    setError(null);
+    setIsSuccess(false);
+    audioChunksRef.current = [];
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
   };
 
-  // Extract transcript and segments from API response
+  // استخراج ساختارمند همزمان متن، سگمنت‌ها و فایل‌های صوتی دریافتی
   const extractTranscriptData = (data) => {
-    console.log('API Response:', data);
-    
-    // اگر پاسخ به صورت آرایه‌ای از نتایج باشد
-    if (data.results && data.results.length > 0) {
-      const result = data.results[0];
-      let transcriptText = result.transcript || result.text || "";
-      let segments = [];
-      
-      if (result.segments && Array.isArray(result.segments)) {
-        segments = result.segments.map(seg => ({
-          start: formatTime(seg.start || 0),
-          end: formatTime(seg.end || 0),
-          text: seg.text || "",
+    console.log("استخراج داده کامل:", data);
+    if (Array.isArray(data) && data.length > 0) {
+      const audioInfo = data[0];
+      const mediaInfo = data[1] || {};
+
+      // دریافت لینک دانلود فایل صوتی (ترجیحاً نسخه توکن‌دار، در غیر این صورت فیلد مدیا آدرس)
+      const directAudioUrl =
+        audioInfo.download_url || mediaInfo.media_url || "";
+
+      if (audioInfo.segments && Array.isArray(audioInfo.segments)) {
+        // ۱. ساخت متن یکپارچه ساده
+        const fullText = audioInfo.segments
+          .map((seg) => seg.text || "")
+          .join(" ");
+
+        // ۲. نرمال‌سازی سگمنت‌های ورودی سرور
+        const extractedSegments = audioInfo.segments.map((seg) => ({
+          start: seg.start || "00:00",
+          end: seg.end || "00:00",
+          text: seg.text ? seg.text.trim() : "[---]", // اگر ثانیه‌ای خالی بود علامت سکوت درج شود
         }));
+
+        return {
+          transcriptText: fullText,
+          segmentsList: extractedSegments,
+          mediaLink: directAudioUrl,
+        };
       }
-      return { transcriptText, segments };
     }
-    
-    // اگر پاسخ مستقیم فیلد transcript داشته باشد
-    if (data.transcript) {
-      let segments = [];
-      if (data.segments && Array.isArray(data.segments)) {
-        segments = data.segments.map(seg => ({
-          start: formatTime(seg.start || 0),
-          end: formatTime(seg.end || 0),
-          text: seg.text || "",
-        }));
-      }
-      return { transcriptText: data.transcript, segments };
-    }
-    
-    return { transcriptText: "", segments: [] };
+    return { transcriptText: "", segmentsList: [], mediaLink: "" };
   };
 
-  // --- سیستم ضبط صدا (بدون کتابخانه خارجی) ---
   const handleStartRecording = async () => {
     setError(null);
     setIsSuccess(false);
     setTranscript("");
+    setSegments([]);
+    setAudioUrl("");
     audioChunksRef.current = [];
-    
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // بررسی فرمت‌های تحت پشتیبانی مرورگر به ترتیب اولویت
-      let options = { mimeType: 'audio/webm' };
-      if (!MediaRecorder.isTypeSupported('audio/webm')) {
-        options = { mimeType: 'audio/ogg' };
+      let options = { mimeType: "audio/webm" };
+      if (!MediaRecorder.isTypeSupported("audio/webm")) {
+        options = { mimeType: "audio/ogg" };
       }
-      
+
       const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const mimeType = mediaRecorderRef.current.mimeType || 'audio/webm';
+        const mimeType = mediaRecorderRef.current.mimeType || "audio/webm";
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        
-        const extension = mimeType.includes('ogg') ? 'ogg' : 'webm';
-        
-        const audioFile = new File([audioBlob], `recorded_audio.${extension}`, { type: mimeType });
-        
-        if (audioFile.size === 0) {
-          setError("صدای ضبط شده خالی است. لطفاً میکروفون را بررسی کنید.");
-          return;
-        }
+        const extension = mimeType.includes("ogg") ? "ogg" : "webm";
+        const audioFile = new File([audioBlob], `recorded_audio.${extension}`, {
+          type: mimeType,
+        });
 
         setIsLoading(true);
-        setTranscript("در حال ارسال و تبدیل فایل صوتی...");
-        
+
         try {
           const result = await transcribeFromFile(audioFile);
-          const { transcriptText, segments } = extractTranscriptData(result);
-          
+          const { transcriptText, segmentsList, mediaLink } =
+            extractTranscriptData(result);
+
           if (transcriptText) {
             setTranscript(transcriptText);
-            setTimestamps(segments);
+            setSegments(segmentsList);
+            // اگر سرور لینک معتبری نداده بود، آبجکت موقت مرورگر را به عنوان بک‌آپ ست کن
+            setAudioUrl(mediaLink || URL.createObjectURL(audioBlob));
             setIsSuccess(true);
           } else {
-            setError("صدا پردازش شد اما متنی استخراج نگردید.");
+            setError("تبدیل صدا انجام شد، اما متنی استخراج نشد.");
           }
         } catch (err) {
-          console.error("خطای سرور هنگام دریافت صدای ضبط شده:", err);
-          const serverMessage = err.response?.data?.detail || err.response?.data?.error || "";
-          setError(`خطا در پردازش سرور: ${serverMessage || "فرمت ضبط مرورگر با سرور سازگار نیست."}`);
+          setError("خطا در پردازش سرور روشن.");
         } finally {
           setIsLoading(false);
         }
-
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-      setTranscript("در حال ضبط صدا... لطفاً صحبت کنید.");
     } catch (err) {
-      console.error("Microphone access error:", err);
-      setError("دسترسی به میکروفون امکان‌پذیر نیست. لطفاً دسترسی مرورگر را بررسی کنید.");
+      setError("دسترسی به میکروفون امکان‌پذیر نیست.");
     }
   };
 
@@ -145,26 +143,29 @@ const HomePage = () => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     setIsLoading(true);
     setError(null);
     setIsSuccess(false);
     setTranscript("");
-    
+    setSegments([]);
+    setAudioUrl("");
+
     try {
       const result = await transcribeFromFile(file);
-      const { transcriptText, segments } = extractTranscriptData(result);
-      
+      const { transcriptText, segmentsList, mediaLink } =
+        extractTranscriptData(result);
+
       if (transcriptText) {
         setTranscript(transcriptText);
-        setTimestamps(segments);
+        setSegments(segmentsList);
+        setAudioUrl(mediaLink || URL.createObjectURL(file)); // ست کردن آدرس صوتی محلی یا آنلاین فایل ارسالی
         setIsSuccess(true);
       } else {
-        setError("تبدیل فایل ناموفق بود یا متنی یافت نشد.");
+        setError("تبدیل فایل انجام شد، اما متنی استخراج نشد.");
       }
     } catch (err) {
-      console.error("File transcription failed:", err);
-      setError("خطا در پردازش فایل. لطفا فرمت یا حجم فایل را بررسی کنید.");
+      setError("خطا در پردازش فایل آپلود شده.");
     } finally {
       setIsLoading(false);
     }
@@ -172,26 +173,29 @@ const HomePage = () => {
 
   const handleLinkSubmit = async (url) => {
     if (!url) return;
-    
+
     setIsLoading(true);
     setError(null);
     setIsSuccess(false);
     setTranscript("");
-    
+    setSegments([]);
+    setAudioUrl("");
+
     try {
       const result = await transcribeFromUrl(url);
-      const { transcriptText, segments } = extractTranscriptData(result);
-      
+      const { transcriptText, segmentsList, mediaLink } =
+        extractTranscriptData(result);
+
       if (transcriptText) {
         setTranscript(transcriptText);
-        setTimestamps(segments);
+        setSegments(segmentsList);
+        setAudioUrl(mediaLink || url); // از آدرس لینک ارسالی کاربر جهت بارگذاری در پلیر استفاده کن
         setIsSuccess(true);
       } else {
-        setError("پاسخی حاوی متن از سرور دریافت نشد.");
+        setError("تبدیل لینک انجام شد، اما متنی یافت نشد.");
       }
     } catch (err) {
-      console.error("Link transcription failed:", err);
-      setError("خطا در تبدیل لینک. لطفاً از صحت لینک مستقیم صوتی/تصویری مطمئن شوید.");
+      setError("خطا در تبدیل لینک ارسالی.");
     } finally {
       setIsLoading(false);
     }
@@ -200,11 +204,8 @@ const HomePage = () => {
   const handleButtonChange = (button) => {
     setActiveButton(button);
     setError(null);
-    if (button !== 'record' && isRecording) {
+    if (button !== "record" && isRecording) {
       handleStopRecording();
-    }
-    if (button !== 'link') {
-      setIsSuccess(false);
     }
   };
 
@@ -214,10 +215,9 @@ const HomePage = () => {
         <h1 className="text-2xl md:text-3xl font-bold text-[#00BA9F] mb-4">
           تبدیل گفتار به متن
         </h1>
-        <p className="text-gray-600 leading-relaxed text-sm md:text-base">
-          آوا با استفاده از هزاران ساعت گفتار با صدای افراد مختلف،
-          <br />
-          زبان فارسی را یاد گرفته است و می‌تواند متن گفتار شما را بنویسد.
+        <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+          آوا با استفاده از هزاران ساعت گفتار با صدای افراد مختلف، زبان فارسی را
+          یاد گرفته است.
         </p>
       </div>
 
@@ -232,28 +232,24 @@ const HomePage = () => {
         />
 
         <TranscriptDisplay
+        selectedLanguage={selectedLanguage}
           activeButton={activeButton}
           isRecording={isRecording}
-          onRecordToggle={isRecording ? handleStopRecording : handleStartRecording}
+          onRecordToggle={
+            isRecording ? handleStopRecording : handleStartRecording
+          }
           onLinkSubmit={handleLinkSubmit}
           isLoading={isLoading}
           transcriptText={transcript}
+          segments={segments} // فرستادن لیست تکه‌های صوتی
+          audioUrl={audioUrl} // فرستادن لینک استریم صوت برای پلیر
           error={error}
           isSuccess={isSuccess}
+          onReset={handleReset}
         />
       </div>
 
-      {timestamps.length > 0 && isSuccess && (
-        <div className="mt-6 bg-white p-4 rounded-xl border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">
-            متن زمان‌بندی شده
-          </h3>
-          <TimestampList timestamps={timestamps} />
-        </div>
-      )}
-
-
-      <div className="flex justify-start mt-4 mb-6">
+      <div className="flex justify-end mt-4 mb-6">
         <LanguageSelector
           selectedLanguage={selectedLanguage}
           onLanguageChange={setSelectedLanguage}
