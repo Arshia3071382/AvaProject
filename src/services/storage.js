@@ -1,5 +1,3 @@
-// src/services/storage.js
-
 const STORAGE_KEY = 'harf_audio_archive';
 
 // ۱. دریافت تمام آرشیو از فایل JSON مرورگر
@@ -8,8 +6,8 @@ export const getArchive = () => {
   return data ? JSON.parse(data) : [];
 };
 
-// ۲. اضافه کردن یک ویس جدید تبدیل شده به فایل JSON
-export const addToArchive = (name, type, fileType, duration, transcriptText, segments = [], audioUrl = "") => {
+// ۲. اضافه کردن یک ویس جدید به همراه پارامتر داینامیک حجم فایل (fileSize)
+export const addToArchive = (name, type, fileType, duration, transcriptText, segments = [], audioUrl = "", fileSize = null) => {
   const archive = getArchive();
   
   // ساختن شیء جدید منطبق بر ساختار جدول شما
@@ -22,7 +20,8 @@ export const addToArchive = (name, type, fileType, duration, transcriptText, seg
     duration: duration || "00:00",
     audioUrl: audioUrl,
     transcriptText: transcriptText,
-    segments: segments
+    segments: segments,
+    fileSize: fileSize // ذخیره حجم فایل (مثلاً: "3.18 مگابایت")
   };
 
   // اضافه کردن به ابتدای لیست آرشیو
@@ -31,14 +30,12 @@ export const addToArchive = (name, type, fileType, duration, transcriptText, seg
   return updatedArchive;
 };
 
-// ۳. حذف یک فایل از درون JSON
 export const deleteFromArchive = (id) => {
   const archive = getArchive();
   const updatedArchive = archive.filter(item => item.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedArchive));
   return updatedArchive;
 };
-// src/services/storage.js (اضافه کردن به انتهای فایل)
 
 export const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return "00:00";
@@ -64,7 +61,7 @@ export const getAudioDuration = (audioSource) => {
     });
 
     audio.addEventListener('error', () => {
-      resolve("00:00"); // در صورت بروز خطا زمان پیش‌فرض
+      resolve("00:00"); 
     });
   });
 };

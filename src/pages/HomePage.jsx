@@ -1,14 +1,13 @@
 import { useState } from "react";
 import LanguageSelector from "../components/ui/LanguageSelector";
-import TranscriptDisplay from "../components/transcript/TranscriptDisplay";
-import ActionButtons from "../components/ui/ActionButtons";
 import HeroSection from "../components/ui/HeroSection";
+import TranscriptContainer from "../components/transcript/TranscriptContainer";
 import { transcribeFromUrl, transcribeFromFile } from "../services/api";
-import { addToArchive, getAudioDuration } from "../services/storage";
-import { extractTranscriptData } from "../utils/extractTranscriptData";
 import { useAudioRecorder } from "../hooks/useAudioRecorder";
+import { processAudioResult } from "../utils/audioHelper";
 
 const HomePage = () => {
+  // state management
   const [transcript, setTranscript] = useState("");
   const [segments, setSegments] = useState([]);
   const [audioUrl, setAudioUrl] = useState("");
@@ -18,146 +17,71 @@ const HomePage = () => {
   const [error, setError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // audio hook
   const { isRecording, startRecording, stopRecording, mediaRecorderRef, audioChunksRef } = useAudioRecorder();
 
+  // reset view
   const handleReset = () => {
-    setTranscript("");
-    setSegments([]);
-    setAudioUrl("");
-    setActiveButton(null);
-    setIsLoading(false);
-    setError(null);
-    setIsSuccess(false);
+    setTranscript(""); setSegments([]); setAudioUrl(""); setActiveButton(null);
+    setIsLoading(false); setError(null); setIsSuccess(false);
     if (mediaRecorderRef.current?.state !== "inactive") mediaRecorderRef.current?.stop();
   };
 
-  const processResult = async (result, audioBlob, sourceName, sourceType, fileExtension, sourceUrl = null) => {
-    const { transcriptText, segmentsList, mediaLink } = extractTranscriptData(result);
-    if (!transcriptText) {
-      setError("Transcription completed but no text extracted.");
-      return false;
-    }
-
-    const finalAudioUrl = mediaLink || (audioBlob ? URL.createObjectURL(audioBlob) : sourceUrl);
-    const durationText = audioBlob ? await getAudioDuration(audioBlob) : await getAudioDuration(finalAudioUrl);
-
-    setTranscript(transcriptText);
-    setSegments(segmentsList);
-    setAudioUrl(finalAudioUrl);
-    setIsSuccess(true);
-
-    addToArchive(sourceName, sourceType, fileExtension, durationText, transcriptText, segmentsList, finalAudioUrl);
-    return true;
+  // wrapper function
+  const runTranscription = async (transcribeFn, processArgs, errorMsg) => {
+    setIsLoading(true); setError(null); setIsSuccess(false);
+    setTranscript(""); setSegments([]); setAudioUrl("");
+    try {
+      const result = await transcribeFn();
+      const response = await processAudioResult(result, ...processArgs);
+      if (response.success) {
+        setTranscript(response.transcriptText); setSegments(response.segmentsList);
+        setAudioUrl(response.finalAudioUrl); setIsSuccess(true);
+      } else { setError(response.error); }
+    } catch (err) { setError(errorMsg); } finally { setIsLoading(false); }
   };
 
+  // voice record
   const handleStartRecordingAction = async () => {
-    setError(null);
-    setIsSuccess(false);
-    setTranscript("");
-    setSegments([]);
-    setAudioUrl("");
-
+    setError(null); setIsSuccess(false);
     try {
       const { mediaRecorder } = await startRecording();
-      mediaRecorder.onstop = async () => {
-        const mimeType = mediaRecorderRef.current.mimeType || "audio/webm";
-        const extension = mimeType.includes("ogg") ? "ogg" : "webm";
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const audioFile = new File([audioBlob], `recorded_audio.${extension}`, { type: mimeType });
-
-        setIsLoading(true);
-        try {
-          const result = await transcribeFromFile(audioFile, selectedLanguage);
-          await processResult(result, audioBlob, `Recorded_${Date.now().toString().slice(-4)}`, "record", `.${extension}`);
-        } catch (err) {
-          setError("Server processing error.");
-        } finally {
-          setIsLoading(false);
-        }
+      mediaRecorder.onstop = () => {
+        const mime = mediaRecorderRef.current.mimeType || "audio/webm";
+        const ext = mime.includes("ogg") ? "ogg" : "webm";
+        const blob = new Blob(audioChunksRef.current, { type: mime });
+        const file = new File([blob], `recorded_audio.${ext}`, { type: mime });
+        runTranscription(() => transcribeFromFile(file, selectedLanguage), [blob, `Recorded_${Date.now().toString().slice(-4)}`, "record", `.${ext}`], "Server processing error.");
       };
-    } catch (err) {
-      setError("Microphone access denied.");
-    }
+    } catch (err) { setError("Microphone access denied."); }
   };
 
-  const handleFileUpload = async (event) => {
+  // file upload
+  const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
-    setIsLoading(true);
-    setError(null);
-    setIsSuccess(false);
-    setTranscript("");
-    setSegments([]);
-    setAudioUrl("");
-
-    try {
-      const result = await transcribeFromFile(file, selectedLanguage);
-      const fileExtension = file.name.substring(file.name.lastIndexOf("."));
-      await processResult(result, file, file.name, "upload", fileExtension);
-    } catch (err) {
-      setError("Error processing uploaded file.");
-    } finally {
-      setIsLoading(false);
-    }
+    const ext = file.name.substring(file.name.lastIndexOf("."));
+    runTranscription(() => transcribeFromFile(file, selectedLanguage), [file, file.name, "upload", ext], "Error processing uploaded file.");
   };
 
-  const handleLinkSubmit = async (url) => {
+  // link submit
+  const handleLinkSubmit = (url) => {
     if (!url) return;
-
-    setIsLoading(true);
-    setError(null);
-    setIsSuccess(false);
-    setTranscript("");
-    setSegments([]);
-    setAudioUrl("");
-
-    try {
-      const result = await transcribeFromUrl(url, selectedLanguage);
-      const fileExtension = url.match(/\.[0-9a-z]+$/i)?.[0] || ".mp3";
-      await processResult(result, null, url, "link", fileExtension, url);
-    } catch (err) {
-      setError("Error processing link.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleButtonChange = (button) => {
-    setActiveButton(button);
-    setError(null);
-    if (button !== "record" && isRecording) stopRecording();
+    const ext = url.match(/\.[0-9a-z]+$/i)?.[0] || ".mp3";
+    runTranscription(() => transcribeFromUrl(url, selectedLanguage), [null, url, "link", ext, url], "Error processing link.");
   };
 
   return (
+    // main template
     <div className="max-w-4xl mx-auto px-4 mt-10" dir="rtl">
       <HeroSection />
-      <div className="flex flex-col">
-        <ActionButtons
-          isRecording={isRecording}
-          onStartRecording={handleStartRecordingAction}
-          onStopRecording={stopRecording}
-          onFileUpload={handleFileUpload}
-          activeButton={activeButton}
-          onButtonChange={handleButtonChange}
-          onReset={handleReset}
-        />
-        <TranscriptDisplay
-          selectedLanguage={selectedLanguage}
-          activeButton={activeButton}
-          isRecording={isRecording}
-          onRecordToggle={isRecording ? stopRecording : handleStartRecordingAction}
-          onLinkSubmit={handleLinkSubmit}
-          isLoading={isLoading}
-          transcriptText={transcript}
-          segments={segments}
-          audioUrl={audioUrl}
-          error={error}
-          isSuccess={isSuccess}
-          onReset={handleReset}
-          onFileUpload={handleFileUpload}
-        />
-      </div>
+      
+      <TranscriptContainer 
+        states={{ transcript, segments, audioUrl, selectedLanguage, activeButton, isLoading, error, isSuccess }}
+        recorders={{ isRecording, stopRecording }}
+        handlers={{ onStartRecording: handleStartRecordingAction, onFileUpload: handleFileUpload, onLinkSubmit: handleLinkSubmit, onReset: handleReset, onButtonChange: (btn) => { setActiveButton(btn); setError(null); if (btn !== "record" && isRecording) stopRecording(); } }}
+      />
+
       <div className="flex justify-end mt-4 mb-6">
         <LanguageSelector selectedLanguage={selectedLanguage} onLanguageChange={setSelectedLanguage} />
       </div>

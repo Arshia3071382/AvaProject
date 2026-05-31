@@ -20,7 +20,7 @@ const LanguageSelector = ({ selectedLanguage, onLanguageChange }) => {
     setIsOpen(false); 
   };
 
-  // بستن دراپ‌دان در صورت کلیک به بیرون از المان
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {

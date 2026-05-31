@@ -1,5 +1,3 @@
-// Hero section with title and description
-
 const HeroSection = () => {
   return (
     <div className="text-center mb-8">

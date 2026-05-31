@@ -23,7 +23,7 @@ const ProfileMenu = () => {
   return (
     <div className="relative flex items-center gap-2 flex-row-reverse" ref={dropdownRef}>
       
-      {/* Profile button */}
+      
       <div className="relative inline-block">
         <button
           onClick={() => setIsOpen(!isOpen)}
@@ -40,7 +40,7 @@ const ProfileMenu = () => {
           )}
         </button>
 
-        {/* Dropdown menu */}
+       
         {isOpen && (
           <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20 animate-fadeIn">
             {PROFILE_OPTIONS.map((option) => (

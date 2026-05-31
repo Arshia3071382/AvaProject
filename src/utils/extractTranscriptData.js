@@ -1,4 +1,3 @@
-// Extract transcript text, segments and media link from API response
 
 export const extractTranscriptData = (data) => {
   console.log("Extracting data:", data);

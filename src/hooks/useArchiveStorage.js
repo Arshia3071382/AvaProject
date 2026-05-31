@@ -1,4 +1,4 @@
-// Custom hook for archive storage operations
+
 import { addToArchive } from "../services/storage";
 
 export const useArchiveStorage = () => {

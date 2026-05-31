@@ -1,4 +1,3 @@
-// src/components/ui/AudioActionBar.jsx
 import React from "react";
 import { FaPlay, FaPause, FaVolumeMute, FaVolumeUp } from "react-icons/fa";
 
@@ -21,7 +20,7 @@ const AudioActionBar = ({
   onVolumeChange,
   onToggleMute,
 }) => {
-  // محاسبه درصد دقیق پیشرفت صوت برای پر شدن رنگ آبی
+  
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
@@ -42,13 +41,13 @@ const AudioActionBar = ({
         </button>
       </div>
 
-      {/* رنج اسلایدر با استایل گرادینت داینامیک برای پر شدن رنگ آبی و حرکت روان ترنزیشن */}
+      
       <input
         type="range"
         min={0}
         max={duration || 100}
         value={currentTime}
-        step="0.01" // افزایش دقت گام‌ها جهت حرکت فوق‌العاده نرم دایره
+        step="0.01" 
         onChange={(e) => onSeek(parseFloat(e.target.value))}
         className="flex-1 h-1 rounded-lg appearance-none cursor-pointer outline-none transition-all duration-100 ease-linear"
         style={{

@@ -20,12 +20,12 @@ const Sidebar = () => {
       </div>
         
        
-      {/* Logo */}
+    
       <div className="flex justify-center w-full mb-8 pb-4 relative -top-10 "> 
        <img src="/images/site logo.png" alt="لوگوی سایت" />
       </div>
 
-      {/* Vertical navigation menu */}
+    
       <nav className="flex flex-col gap-2 px-4 mt-5 ">
         {SIDEBAR_ITEMS.map((item) => (
           <NavLink
