@@ -1,30 +1,26 @@
 const STORAGE_KEY = 'harf_audio_archive';
 
-// ۱. دریافت تمام آرشیو از فایل JSON مرورگر
 export const getArchive = () => {
   const data = localStorage.getItem(STORAGE_KEY);
   return data ? JSON.parse(data) : [];
 };
 
-// ۲. اضافه کردن یک ویس جدید به همراه پارامتر داینامیک حجم فایل (fileSize)
 export const addToArchive = (name, type, fileType, duration, transcriptText, segments = [], audioUrl = "", fileSize = null) => {
   const archive = getArchive();
   
-  // ساختن شیء جدید منطبق بر ساختار جدول شما
   const newItem = {
-    id: Date.now(), // شناسه یکتا بر اساس زمان
+    id: Date.now(),
     name: name || "فایل بدون نام",
-    type: type, // 'link' یا 'upload' یا 'record'
+    type: type, 
     fileType: fileType || ".mp3",
-    uploadDate: new Date().toLocaleDateString('fa-IR'), // ذخیره تاریخ شمسی روز
+    uploadDate: new Date().toLocaleDateString('fa-IR'), 
     duration: duration || "00:00",
     audioUrl: audioUrl,
     transcriptText: transcriptText,
     segments: segments,
-    fileSize: fileSize // ذخیره حجم فایل (مثلاً: "3.18 مگابایت")
+    fileSize: fileSize 
   };
 
-  // اضافه کردن به ابتدای لیست آرشیو
   const updatedArchive = [newItem, ...archive];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedArchive));
   return updatedArchive;
