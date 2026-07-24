@@ -5,27 +5,40 @@ const ProfileMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // ۱. اضافه کردن اکشن برای هر گزینه در منو
   const PROFILE_OPTIONS = [
-    { id: 'guest', label: 'مهمان', icon: FaUser },
-    { id: 'logout', label: 'خروج', icon: FaSignOutAlt },
+    { id: 'guest', label: 'مهمان', icon: FaUser, action: () => console.log('مهمان انتخاب شد') },
+    { id: 'logout', label: 'خروج', icon: FaSignOutAlt, action: () => console.log('خروج انجام شد') },
   ];
 
-  const getCurrentLabel = () => {
-    return 'مهمان';
-  };
+  const getCurrentLabel = () => 'مهمان';
 
   const handleSelect = (option) => {
-    option.action();
+    if (option.action) {
+      option.action();
+    }
     setIsOpen(false);
   };
 
+  // ۲. استفاده از useEffect برای بستن دراپ‌داون با کلیک روی بیرون از آن
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="relative flex items-center gap-2 flex-row-reverse" ref={dropdownRef}>
-      
-      
       <div className="relative inline-block">
         <button
+          type="button"
           onClick={() => setIsOpen(!isOpen)}
           className="flex flex-row-reverse items-center justify-between gap-4 px-4 py-2 bg-white border border-light-green rounded-3xl shadow-sm transition-colors min-w-[120px] hover:border-green-400"
         >
@@ -40,12 +53,12 @@ const ProfileMenu = () => {
           )}
         </button>
 
-       
         {isOpen && (
           <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20 animate-fadeIn">
             {PROFILE_OPTIONS.map((option) => (
               <button
                 key={option.id}
+                type="button"
                 onClick={() => handleSelect(option)}
                 className="w-full flex items-center justify-between px-4 py-2 transition-colors text-gray-700 hover:bg-gray-100"
               >
